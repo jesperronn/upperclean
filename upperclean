@@ -22,6 +22,7 @@ INTERACTIVE=false
 CLEANUP_LEVEL="standard"
 TOTAL_RECOVERY=0
 OS_TYPE=""
+declare -a CATEGORY_FILTER  # Empty = all categories, or specific ones like (docker npm maven)
 
 # Detect OS
 detect_os() {
@@ -168,6 +169,25 @@ parse_target() {
   echo "$name|$command|$category"
 }
 
+# Check if target matches category filter
+matches_category_filter() {
+  local category="$1"
+
+  # If no filter set, all categories match
+  if [[ ${#CATEGORY_FILTER[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  # Check if category is in filter
+  for filter_cat in "${CATEGORY_FILTER[@]}"; do
+    if [[ "$category" == "$filter_cat" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 # Multi-select for high-risk items (with fzf if available, fallback to manual selection)
 multi_select() {
   local array_name="$1"
@@ -231,6 +251,12 @@ use_manual_multi_select() {
   local total_size=0
   for target in "${items[@]}"; do
     IFS='|' read -r name cmd cat <<<"$target"
+
+    # Skip if doesn't match category filter
+    if ! matches_category_filter "$cat"; then
+      continue
+    fi
+
     # Extract path from command if it's a rm -rf or similar
     local path=$(echo "$cmd" | grep -oE "~[/\w.-]*|/[/\w.-]*" | head -1)
     if [[ -n "$path" ]]; then
@@ -248,7 +274,9 @@ use_manual_multi_select() {
     log_warning "Force mode: auto-selecting all items"
     for target in "${items[@]}"; do
       IFS='|' read -r name cmd cat <<<"$target"
-      execute_cleanup "$name" "$cmd" ""
+      if matches_category_filter "$cat"; then
+        execute_cleanup "$name" "$cmd" ""
+      fi
     done
   else
     # Simple selection: accept space-separated numbers
@@ -283,7 +311,9 @@ cleanup_quick() {
 
   for target in "${QUICK_TARGETS[@]}"; do
     IFS='|' read -r name command category <<<"$target"
-    execute_cleanup "$name" "$command" ""
+    if matches_category_filter "$category"; then
+      execute_cleanup "$name" "$command" ""
+    fi
   done
 }
 
@@ -295,7 +325,9 @@ cleanup_standard() {
 
   for target in "${STANDARD_TARGETS[@]}"; do
     IFS='|' read -r name command category <<<"$target"
-    execute_cleanup "$name" "$command" ""
+    if matches_category_filter "$category"; then
+      execute_cleanup "$name" "$command" ""
+    fi
   done
 }
 
@@ -336,7 +368,7 @@ show_help() {
 ${BLUE}upperclean${NC} - Developer cleanup utility
 
 ${YELLOW}Usage:${NC}
-  upperclean [LEVEL] [OPTIONS]
+  upperclean [LEVEL] [OPTIONS] [CATEGORIES]
 
 ${YELLOW}Cleanup Levels:${NC}
   --quick       Daily cleanup - zero risk (default: standard)
@@ -351,12 +383,30 @@ ${YELLOW}Options:${NC}
   --interactive Force multi-select even for safe operations
   --help        Show this message
 
+${YELLOW}Category Filters:${NC}
+  --docker      Docker cleanup only
+  --npm         npm cleanup only
+  --pip         pip cleanup only
+  --yarn        yarn cleanup only
+  --ruby|--gem  Ruby gems cleanup
+  --homebrew    Homebrew cleanup
+  --apt         APT cleanup (Linux)
+  --gradle      Gradle cleanup
+  --cargo       Cargo cleanup
+  --sbt         SBT cleanup
+  --maven       Maven cleanup
+  --xcode       Xcode cleanup (macOS)
+  --jetbrains   JetBrains IDE cleanup
+  --vscode      VS Code cleanup
+  --git         Git cleanup
+  --system      System cleanup
+
 ${YELLOW}Examples:${NC}
-  upperclean --quick              # Daily safe cleanup
-  upperclean --standard --dry-run # Preview standard cleanup
-  upperclean --deep               # Monthly with multi-select
-  upperclean --aggressive --force # Risky cleanup, no prompts
-  upperclean --standard --global  # System-wide cleanup
+  upperclean --quick                    # Daily safe cleanup
+  upperclean --standard --dry-run       # Preview standard cleanup
+  upperclean --deep --docker            # Clean Docker only
+  upperclean --standard --npm --yarn    # Clean npm and yarn
+  upperclean --quick --global --docker  # Global Docker cleanup
 
 ${YELLOW}Safety Tips:${NC}
   1. Start with --quick level
@@ -395,6 +445,23 @@ main() {
       --force) FORCE=true ;;
       --interactive) INTERACTIVE=true ;;
       --help) show_help; exit 0 ;;
+      # Category filters
+      --docker) CATEGORY_FILTER+=("docker") ;;
+      --npm) CATEGORY_FILTER+=("npm") ;;
+      --pip) CATEGORY_FILTER+=("pip") ;;
+      --yarn) CATEGORY_FILTER+=("yarn") ;;
+      --ruby|--gem) CATEGORY_FILTER+=("ruby") ;;
+      --homebrew|--brew) CATEGORY_FILTER+=("homebrew") ;;
+      --apt) CATEGORY_FILTER+=("apt") ;;
+      --gradle) CATEGORY_FILTER+=("gradle") ;;
+      --cargo) CATEGORY_FILTER+=("cargo") ;;
+      --sbt) CATEGORY_FILTER+=("sbt") ;;
+      --maven) CATEGORY_FILTER+=("maven") ;;
+      --xcode) CATEGORY_FILTER+=("xcode") ;;
+      --jetbrains) CATEGORY_FILTER+=("jetbrains") ;;
+      --vscode) CATEGORY_FILTER+=("vscode") ;;
+      --git) CATEGORY_FILTER+=("git") ;;
+      --system) CATEGORY_FILTER+=("system") ;;
       *) log_error "Unknown option: $arg"; show_help; exit 1 ;;
     esac
   done
