@@ -18,7 +18,8 @@ NC='\033[0m' # No Color
 DRY_RUN=false
 FORCE=false
 GLOBAL=false
-INTERACTIVE=false
+INTERACTIVE=true              # Interactive (multi-select) is default
+SKIP_INTERACTIVE=false        # Set true with --no-interactive to disable prompts
 CLEANUP_LEVEL="standard"
 TOTAL_RECOVERY=0
 OS_TYPE=""
@@ -270,8 +271,12 @@ use_manual_multi_select() {
 
   echo ""
 
-  if [[ "$FORCE" == true ]]; then
-    log_warning "Force mode: auto-selecting all items"
+  if [[ "$FORCE" == true ]] || [[ "$SKIP_INTERACTIVE" == true ]]; then
+    if [[ "$FORCE" == true ]]; then
+      log_warning "Force mode: auto-selecting all items"
+    else
+      log_info "Non-interactive mode: auto-selecting all items"
+    fi
     for target in "${items[@]}"; do
       IFS='|' read -r name cmd cat <<<"$target"
       if matches_category_filter "$cat"; then
@@ -279,7 +284,7 @@ use_manual_multi_select() {
       fi
     done
   else
-    # Simple selection: accept space-separated numbers
+    # Simple selection: accept space-separated numbers (interactive mode)
     echo "Enter numbers to select (space-separated, e.g., '0 2 3') or press Enter to skip:"
     read -r -p "> " selection_input </dev/tty
 
@@ -377,11 +382,11 @@ ${YELLOW}Cleanup Levels:${NC}
   --aggressive  Yearly cleanup - high risk
 
 ${YELLOW}Options:${NC}
-  --global      Clean entire system (default: current project)
-  --dry-run     Preview changes without deleting
-  --force       Skip multi-select menus, auto-delete
-  --interactive Force multi-select even for safe operations
-  --help        Show this message
+  --global           Clean entire system (default: current project)
+  --dry-run          Preview changes without deleting
+  --force            Auto-delete without multi-select prompts
+  --no-interactive   Skip interactive prompts, auto-delete all
+  --help             Show this message
 
 ${YELLOW}Category Filters:${NC}
   --docker      Docker cleanup only
@@ -402,11 +407,13 @@ ${YELLOW}Category Filters:${NC}
   --system      System cleanup
 
 ${YELLOW}Examples:${NC}
-  upperclean --quick                    # Daily safe cleanup
-  upperclean --standard --dry-run       # Preview standard cleanup
-  upperclean --deep --docker            # Clean Docker only
-  upperclean --standard --npm --yarn    # Clean npm and yarn
-  upperclean --quick --global --docker  # Global Docker cleanup
+  upperclean --quick                         # Daily safe cleanup
+  upperclean --standard --dry-run            # Preview standard cleanup
+  upperclean --deep --docker                 # Clean Docker only (interactive)
+  upperclean --standard --npm --yarn         # Clean npm and yarn (interactive)
+  upperclean --quick --global --docker       # Global Docker cleanup (interactive)
+  upperclean --deep --docker --no-interactive # Docker cleanup, skip prompts
+  upperclean --aggressive --force --dry-run  # Preview aggressive, force mode
 
 ${YELLOW}Safety Tips:${NC}
   1. Start with --quick level
@@ -443,7 +450,7 @@ main() {
       --global) GLOBAL=true ;;
       --dry-run) DRY_RUN=true ;;
       --force) FORCE=true ;;
-      --interactive) INTERACTIVE=true ;;
+      --no-interactive|--skip-interactive) SKIP_INTERACTIVE=true ;;
       --help) show_help; exit 0 ;;
       # Category filters
       --docker) CATEGORY_FILTER+=("docker") ;;
