@@ -330,7 +330,9 @@ cleanup_aggressive() {
 ###############################################################################
 
 show_help() {
-  cat <<EOF
+  while IFS= read -r line; do
+    echo -e "$line"
+  done <<EOF
 ${BLUE}upperclean${NC} - Developer cleanup utility
 
 ${YELLOW}Usage:${NC}
