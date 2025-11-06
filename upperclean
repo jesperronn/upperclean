@@ -49,6 +49,7 @@ setup_quick_targets() {
     "yarn cache|yarn cache clean|yarn"
     "ruby gems|gem cleanup|ruby"
     "docker dangling images|docker image prune -f|docker"
+    "podman dangling images|podman image prune -f|podman"
   )
 }
 
@@ -58,6 +59,8 @@ setup_standard_targets() {
   STANDARD_TARGETS=(
     "docker containers|docker container prune -f|docker"
     "docker build cache|docker builder prune -f|docker"
+    "podman containers|podman container prune -f|podman"
+    "podman build cache|podman builder prune -f|podman"
     "brew caches|brew cleanup --prune=all|homebrew"
   )
 
@@ -96,6 +99,7 @@ declare -a AGGRESSIVE_TARGETS
 setup_aggressive_targets() {
   AGGRESSIVE_TARGETS=(
     "docker system prune -a|docker system prune -a -f|docker"
+    "podman system prune -a|podman system prune -a -f|podman"
     "maven repository|rm -rf ~/.m2/repository|maven"
   )
 
@@ -390,6 +394,7 @@ ${YELLOW}Options:${NC}
 
 ${YELLOW}Category Filters:${NC}
   --docker      Docker cleanup only
+  --podman      Podman cleanup only
   --npm         npm cleanup only
   --pip         pip cleanup only
   --yarn        yarn cleanup only
@@ -410,6 +415,7 @@ ${YELLOW}Examples:${NC}
   upperclean --quick                         # Daily safe cleanup
   upperclean --standard --dry-run            # Preview standard cleanup
   upperclean --deep --docker                 # Clean Docker only (interactive)
+  upperclean --deep --podman                 # Clean Podman only (interactive)
   upperclean --standard --npm --yarn         # Clean npm and yarn (interactive)
   upperclean --quick --global --docker       # Global Docker cleanup (interactive)
   upperclean --deep --docker --no-interactive # Docker cleanup, skip prompts
@@ -454,6 +460,7 @@ main() {
       --help) show_help; exit 0 ;;
       # Category filters
       --docker) CATEGORY_FILTER+=("docker") ;;
+      --podman) CATEGORY_FILTER+=("podman") ;;
       --npm) CATEGORY_FILTER+=("npm") ;;
       --pip) CATEGORY_FILTER+=("pip") ;;
       --yarn) CATEGORY_FILTER+=("yarn") ;;
